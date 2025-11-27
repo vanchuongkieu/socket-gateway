@@ -1,7 +1,6 @@
 import { Elysia } from 'elysia'
 
-import { onVerifySecretKey } from '../../middlewares/auth.middleware'
-import { createTenantSchema, getTenantSchema } from '../../schemas/tenant.schema'
+import { createTenantSchema } from '../../schemas/tenant.schema'
 
 import TenantService from '../../services/tenant.service'
 
@@ -22,11 +21,6 @@ export const tenantRouter = new Elysia({
     },
     { body: createTenantSchema },
   )
-  .get(
-    '/items',
-    async ({ query }) => {
-      await onVerifySecretKey(query?.sid)
-      return tenantService.getTenants()
-    },
-    { query: getTenantSchema },
-  )
+  .get('/items', async () => {
+    return tenantService.getTenants()
+  })

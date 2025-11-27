@@ -15,14 +15,3 @@ export const createTenantSchema = t.Object(
     description: 'Schema for creating a tenant',
   },
 )
-export const getTenantSchema = t.Object(
-  {
-    sid: t.String({
-      minLength: 1,
-      error: '"sid" must not be empty',
-    }),
-  },
-  {
-    description: 'Schema for get a tenant',
-  },
-)
