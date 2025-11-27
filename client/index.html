@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket Gateway</title>
+    <style>
+      * {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Oxygen,
+          Ubuntu,
+          Cantarell,
+          'Open Sans',
+          'Helvetica Neue',
+          sans-serif;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      label {
+        display: inline-block;
+        margin-bottom: 0.2rem;
+      }
+
+      input,
+      textarea {
+        padding: 0.5rem 0.6rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-gap: 30px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-gap: 30px;
+        grid-template-columns: 500px 1fr;
+      }
+
+      .message-left {
+        background-color: rgb(0, 152, 228);
+        max-width: max-content;
+        padding: 0.5rem 1rem;
+        color: white;
+        border-radius: 0 20px 20px 0;
+        width: 100%;
+        display: block;
+        margin-bottom: 1rem;
+      }
+
+      .message-right {
+        background-color: rgb(208, 0, 142);
+        max-width: max-content;
+        padding: 0.5rem 1rem;
+        text-align: right;
+        color: white;
+        border-radius: 20px 0 0 20px;
+        width: 100%;
+        display: block;
+        margin-bottom: 1rem;
+      }
+
+      li div div {
+        font-weight: bold;
+        margin-right: 1rem;
+        font-size: 12px;
+        margin-bottom: 0.3rem;
+      }
+
+      .message-right div {
+        margin-right: 0;
+        margin-left: 1rem;
+      }
+    </style>
+
+    <script>
+      const swTenantCode = localStorage.getItem('sw_tenant_code')
+      const swSecretKey = localStorage.getItem('sw_secret_key')
+      const swYourName = localStorage.getItem('sw_your_name')
+      const swUserId = localStorage.getItem('sw_user_id')
+
+      const TENANT_CODE = swTenantCode ? swTenantCode : window.prompt('Tenant Code:')
+      const SECRET_KEY = swSecretKey ? swSecretKey : window.prompt('Secret Key:')
+      const FULL_NAME = swYourName ? swYourName : window.prompt('Your Name:')
+      const ID = swUserId ? swUserId : window.prompt('User ID:')
+
+      localStorage.setItem('sw_tenant_code', TENANT_CODE ?? '')
+      localStorage.setItem('sw_secret_key', SECRET_KEY ?? '')
+      localStorage.setItem('sw_your_name', FULL_NAME ?? '')
+      localStorage.setItem('sw_user_id', ID ?? '')
+
+      function onLogout() {
+        localStorage.removeItem('sw_tenant_code')
+        localStorage.removeItem('sw_secret_key')
+        localStorage.removeItem('sw_your_name')
+        localStorage.removeItem('sw_user_id')
+        window.location.reload()
+      }
+
+      const sercurePrefixWS = window.location.protocol === 'http:' ? 'ws' : 'wss'
+
+      const websocket = new WebSocket(
+        `${sercurePrefixWS}://${window.location.host}/gateway/${TENANT_CODE}/conversation?sid=${SECRET_KEY}&uid=${ID}`,
+      )
+    </script>
+  </head>
+  <body>
+    <div class="grid-2">
+      <div class="grid-item">
+        <ul
+          id="conversations"
+          style="
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-bottom: 1rem;
+            width: 100%;
+            height: 70%;
+            overflow-y: auto;
+            border: 2px solid;
+          "
+        ></ul>
+
+        <ul
+          id="tenants"
+          style="
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-bottom: 1rem;
+            width: 100%;
+            height: 30%;
+            overflow-y: auto;
+            border: 2px solid;
+          "
+        ></ul>
+      </div>
+      <div class="grid-item">
+        <ul
+          id="messages"
+          style="
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-bottom: 1rem;
+            width: 100%;
+            height: 500px;
+            overflow-y: auto;
+            border: 2px solid;
+          "
+        ></ul>
+
+        <div class="grid">
+          <div class="grid-item">
+            <label for="inpConversationId">Conversation Id:</label>
+            <input id="inpConversationId" style="width: 100%; margin-bottom: 0.6rem" placeholder="Conversation id" />
+          </div>
+          <div class="grid-item">
+            <label for="inpToUserId">To User ID:</label>
+            <input id="inpToUserId" style="width: 100%; margin-bottom: 0.6rem" placeholder="Enter to user id" />
+          </div>
+        </div>
+        <div class="grid-item">
+          <label for="inpName">Name:</label>
+          <input id="inpName" style="width: 100%; margin-bottom: 0.6rem" placeholder="Enter your name" />
+        </div>
+
+        <label for="inpMessageText">Message:</label>
+        <textarea id="inpMessageText" style="width: 100%; margin-bottom: 0.6rem" rows="9" placeholder="Enter your message"></textarea>
+
+        <div class="grid-2">
+          <div class="grid-item">
+            <button style="width: 100%; padding: 0.5rem; cursor: pointer; margin-bottom: 0.6rem" onclick="onSend()">Send</button>
+          </div>
+          <div class="grid-item">
+            <button onclick="onLogout()" style="width: 100%; padding: 0.5rem; cursor: pointer">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const inpConversationId = document.getElementById('inpConversationId')
+      const inpMessageText = document.getElementById('inpMessageText')
+      const inpToUserId = document.getElementById('inpToUserId')
+      const inpName = document.getElementById('inpName')
+
+      const tenants = document.getElementById('tenants')
+      const messages = document.getElementById('messages')
+      const conversations = document.getElementById('conversations')
+
+      let converCount = 0
+
+      fetchConversation()
+      fetchTenants()
+
+      async function fetchTenants() {
+        const result = await fetch(`${window.location.origin}/api/tenant/items?sid=${SECRET_KEY}`).then(res => res.json())
+
+        result.data.reverse().forEach(item => {
+          const li = document.createElement('li')
+          const div = document.createElement('div')
+
+          div.innerHTML = `
+            <ul style="margin: 0 1rem; padding: 0; cursor: default">
+                <li><strong>Name:</strong> ${item?.name}</li>
+                <li><strong>Code:</strong> ${item?.code}</li>
+                <li><strong>SID:</strong> ${item?.secretKey}</li>
+            </ul>
+          `
+
+          div.className = 'message-left'
+          div.style =
+            'border-radius: 0; max-width: 100%; text-align: left; cursor: pointer; margin-bottom: 0; border-bottom: 1px solid white'
+
+          li.appendChild(div)
+          tenants.appendChild(li)
+          tenants.scrollTo({
+            behavior: 'smooth',
+            top: tenants.scrollHeight,
+          })
+        })
+      }
+
+      async function fetchMessage() {
+        if (!inpConversationId.value) return
+
+        const result = await fetch(`${window.location.origin}/api/${TENANT_CODE}/conversation/items?sid=${SECRET_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uid: Number(ID),
+            sid: SECRET_KEY,
+            cid: inpConversationId.value,
+            limit: 9999999,
+          }),
+        }).then(res => res.json())
+
+        inpConversationId.setAttribute('disabled', !!inpConversationId.value)
+
+        result.data.reverse().forEach(item => {
+          const li = document.createElement('li')
+          const div = document.createElement('div')
+
+          div.innerHTML = `
+                <div style="margin-top: 0.3rem">${item?.senderName}</div>
+                <span>${item?.content}</span>
+                <div style="font-weight: normal; margin-top: 0.4rem">✓ Đã gửi lúc ${new Date(item?.createdAt).toLocaleString('vi-VN')}</div>
+            `
+
+          if (item?.senderId === Number(ID)) {
+            li.style.display = 'flex'
+            li.style.justifyContent = 'flex-end'
+            div.className = 'message-right'
+          } else {
+            div.className = 'message-left'
+          }
+
+          if (item?.content) {
+            li.appendChild(div)
+            messages.appendChild(li)
+            messages.scrollTo({
+              behavior: 'smooth',
+              top: messages.scrollHeight,
+            })
+          }
+        })
+      }
+
+      async function fetchConversation() {
+        if (!ID) return
+
+        inpConversationId.value = ''
+        inpMessageText.value = ''
+
+        const result = await fetch(`${window.location.origin}/api/${TENANT_CODE}/conversation/items?sid=${SECRET_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uid: Number(ID),
+            sid: SECRET_KEY,
+            limit: 9999999,
+          }),
+        }).then(res => res.json())
+
+        result.data.reverse().forEach(item => {
+          const li = document.createElement('li')
+          const div = document.createElement('div')
+
+          div.textContent = item?.title
+
+          div.className = 'message-right'
+          div.style =
+            'border-radius: 0; max-width: 100%; text-align: left; cursor: pointer; margin-bottom: 0; border-bottom: 1px solid white'
+
+          div.onclick = () => {
+            inpMessageText.value = ''
+            messages.innerHTML = ''
+            if (inpConversationId.value !== item?._id) {
+              inpToUserId.setAttribute('disabled', true)
+              inpConversationId.value = item?._id
+              fetchMessage()
+            } else {
+              inpConversationId.value = ''
+            }
+
+            websocket.send(
+              JSON.stringify({
+                event: 'chat.read',
+                data: {
+                  senderId: ID,
+                  senderName: inpName.value,
+                  conversationId: inpConversationId.value,
+                },
+              }),
+            )
+          }
+
+          li.appendChild(div)
+          conversations.appendChild(li)
+          conversations.scrollTo({
+            behavior: 'smooth',
+            top: conversations.scrollHeight,
+          })
+        })
+
+        converCount = result.data.length
+      }
+
+      if (inpConversationId && inpToUserId) {
+        inpConversationId.value = localStorage.getItem(`conversation_${ID}_${inpToUserId}`) ?? null
+        fetchMessage()
+      }
+      if (inpName) {
+        inpName.setAttribute('disabled', true)
+        inpName.value = FULL_NAME
+      }
+
+      function onSend() {
+        if (!inpMessageText.value) {
+          window.alert('"message" required')
+          return
+        }
+        const payload = {
+          event: 'message.send',
+          data: {
+            senderId: Number(ID) || null,
+            senderName: FULL_NAME,
+            conversationId: inpConversationId.value,
+            recipientId: Number(inpToUserId.value) || null,
+            content: inpMessageText.value,
+          },
+        }
+
+        websocket.send(JSON.stringify(payload))
+
+        const li = document.createElement('li')
+        const div = document.createElement('div')
+
+        div.innerHTML = `
+            <div style="margin-top: 0.3rem">${FULL_NAME}</div>
+            <span>${inpMessageText.value}</span>
+            <div style="font-weight: normal; margin-top: 0.4rem">✓ Đã gửi</div>
+        `
+
+        li.style.display = 'flex'
+        li.style.justifyContent = 'flex-end'
+        div.className = 'message-right'
+
+        if (inpMessageText.value) {
+          li.appendChild(div)
+          messages.appendChild(li)
+        }
+
+        messages.scrollTo({
+          behavior: 'smooth',
+          top: messages.scrollHeight,
+        })
+        inpMessageText.value = ''
+      }
+
+      inpToUserId.addEventListener('input', e => {
+        if (e.target.value) {
+          inpConversationId.value = localStorage.getItem(`conversation_${ID}_${e.target.value}`) ?? null
+        }
+      })
+
+      inpToUserId.addEventListener('blur', e => {
+        if (e.target.value) {
+          fetchMessage()
+        }
+      })
+
+      if (inpConversationId.value && ID && FULL_NAME) {
+        websocket.send(
+          JSON.stringify({
+            event: 'chat.read',
+            data: {
+              senderId: Number(ID),
+              senderName: FULL_NAME,
+              conversationId: inpConversationId.value,
+            },
+          }),
+        )
+      }
+
+      websocket.onmessage = function ({ data }) {
+        const items = JSON.parse(data)
+        const conversationId = items?.data?.conversationId
+
+        if (!inpConversationId.value || inpConversationId.value !== conversationId) return
+
+        localStorage.setItem(`conversation_${ID}_${inpToUserId.value}`, conversationId)
+        inpConversationId.value = conversationId
+
+        const li = document.createElement('li')
+        const div = document.createElement('div')
+
+        div.innerHTML = `
+            <div style="margin-top: 0.3rem">${items?.data?.senderName}</div>
+            <span>${items?.data?.content}</span>
+            <div style="font-weight: normal; margin-top: 0.4rem">✓ Đã gửi lúc ${new Date(items?.data?.createdAt).toLocaleString('vi-VN')}</div>
+        `
+
+        if (items?.data?.senderId === Number(ID)) {
+          li.style.display = 'flex'
+          li.style.justifyContent = 'flex-end'
+          div.className = 'message-right'
+        } else {
+          div.className = 'message-left'
+        }
+
+        if (items?.data?.content) {
+          li.appendChild(div)
+          messages.appendChild(li)
+        }
+
+        messages.scrollTo({
+          behavior: 'smooth',
+          top: messages.scrollHeight,
+        })
+
+        if (converCount === 0) {
+          fetchConversation()
+        }
+      }
+    </script>
+  </body>
+</html>

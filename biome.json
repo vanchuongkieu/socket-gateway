@@ -1,0 +1,20 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.6/schema.json",
+  "formatter": {
+    "enabled": true,
+    "lineWidth": 140,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "bracketSpacing": true,
+    "bracketSameLine": false
+  },
+  "files": {
+    "includes": ["**/*.{json,jsonc,toml}"]
+  },
+  "json": {
+    "parser": {
+      "allowComments": true,
+      "allowTrailingCommas": false
+    }
+  }
+}
